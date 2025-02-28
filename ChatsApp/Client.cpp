@@ -1,85 +1,92 @@
-// The Client ( Client.cpp )
+// The Client (Client.cpp)
 
-// ***************************************** Header Files ***********************************************
 #include <iostream>
-#include <cstring>		// strlen()
-#include <cstdlib>		// exit()
-#include <netdb.h>		// gethostbyname(), connect(), send(), recv()
+#include <cstring>        // strlen()
+#include <cstdlib>        // exit()
+#include <netdb.h>        // gethostbyname(), connect(), send(), recv()
 #include <unistd.h>
+#include <pthread.h>
 
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::fill;
-// ****************************************** #Defintions ***********************************************
-#define  MAXBUFFERSIZE		512		// Maximum default buffersize.
-#define  SERVERPORT		   6000		// Server will be listening on this port by default.
-#define  CLIENTPORT        6001		// Client will running on this port.
-// ******************************************************************************************************
+#define MAXBUFFERSIZE 512
+#define SERVERPORT 6000
+#define CLIENTPORT 6001
 
-// *********************************************** Globals ************************************************
-int AddressLength;
 int ClientSocketFD;
-int errorcheck;
-int Yes = 1;
+struct hostent* he;
+struct sockaddr_in ServerAddress, ClientAddress;
+pthread_mutex_t lock;
 
-struct hostent *he;
-struct sockaddr_in ServerAddress;
-struct sockaddr_in ClientAddress;
+// Function to send messages
+void* sendfunc(void* arg) {
+    char ClientMessage[MAXBUFFERSIZE];
 
-// Client's Buffer.
-char Buffer[MAXBUFFERSIZE];
-int NumOfBytesSent;
-int NumOfBytesReceived;
-// ********************************************************************************************************
+    while (true) {
+        std::cout << "Enter message for the server: ";
+        std::cin.getline(ClientMessage, MAXBUFFERSIZE);
 
-int main (int argc, char *argv[])
-{
-	// Standard error checking. Must provide server name/IP and port to connect.
-	if ( argc < 3 )
-	{
-		cout << "ERROR000: Usage: 'Client [server name or IP] [server port]'" << endl;
-		exit (-1);
-	}
+        pthread_mutex_lock(&lock);
+        send(ClientSocketFD, ClientMessage, strlen(ClientMessage), 0);
+        pthread_mutex_unlock(&lock);
 
-	// Getting server's name/IP.
-	he = gethostbyname (argv[1]);
+        if (strcmp(ClientMessage, "bye") == 0) {
+            std::cout << "Client exiting chat." << std::endl;
+            break;
+        }
+    }
 
-	// Creating a socket for the client.
-	ClientSocketFD = socket ( AF_INET, SOCK_STREAM, 0 );
-
-
-	setsockopt (ClientSocketFD, SOL_SOCKET, SO_REUSEADDR, &Yes, sizeof (int));
-
-	// Initializing Client address for binding.
-	ClientAddress.sin_family = AF_INET;					// Socket family.
-	ClientAddress.sin_addr.s_addr = INADDR_ANY;			// Assigninig client IP.
-	ClientAddress.sin_port = htons (CLIENTPORT);		// Client port.
-	fill ((char*)&(ClientAddress.sin_zero), (char*)&(ClientAddress.sin_zero)+8, '\0');
-
-	// bind()
-	bind (ClientSocketFD, (sockaddr *)&ClientAddress, sizeof (ClientAddress));
-
-	// Initializing Server address to connect to.
-	ServerAddress.sin_family = AF_INET;							// Socket family.
-	ServerAddress.sin_addr = *((in_addr *)(*he).h_addr);	// Server name/IP.
-	ServerAddress.sin_port = htons (atoi (argv[2]));			// Server port provided as argument.
-	fill ((char*)&(ServerAddress.sin_zero), (char*)&(ServerAddress.sin_zero)+8, '\0');
-
-	// Connecting to the server.
-	connect (ClientSocketFD, (sockaddr *)&ServerAddress, sizeof (ServerAddress));
-
-	// send()
-	char ClientMessage[] = "Hello from client.";
-	NumOfBytesSent = send (ClientSocketFD, ClientMessage, strlen (ClientMessage), 0);
-
-	// recv() is blocking and will wait for any messages.
-	NumOfBytesReceived = recv (ClientSocketFD, Buffer, MAXBUFFERSIZE-1, 0);		// Blocking
-	Buffer[NumOfBytesReceived] = '\0';
-	cout << "Server says: " << Buffer << endl;
-
-	// Close client socket and exit.
-	close (ClientSocketFD);
-	return 0;
+    return nullptr;
 }
 
+// Function to receive messages
+void* recvfunc(void* arg) {
+    char buffer[MAXBUFFERSIZE];
+
+    while (true) {
+        int bytesReceived = recv(ClientSocketFD, buffer, MAXBUFFERSIZE - 1, 0);
+        if (bytesReceived <= 0) {
+            std::cout << "Server disconnected." << std::endl;
+            break;
+        }
+
+        buffer[bytesReceived] = '\0';
+        std::cout << "Server says: " << buffer << std::endl;
+    }
+
+    return nullptr;
+}
+
+int main(int argc, char* argv[]) {
+    pthread_mutex_init(&lock, nullptr);
+
+    if (argc < 3) {
+        std::cout << "Usage: ./client [server name or IP] [server port]" << std::endl;
+        exit(-1);
+    }
+
+    he = gethostbyname(argv[1]);
+    ClientSocketFD = socket(AF_INET, SOCK_STREAM, 0);
+
+    int Yes = 1;
+    setsockopt(ClientSocketFD, SOL_SOCKET, SO_REUSEADDR, &Yes, sizeof(int));
+
+    // Initializing Server address
+    ServerAddress.sin_family = AF_INET;
+    ServerAddress.sin_addr = *((in_addr*)(*he).h_addr);
+    ServerAddress.sin_port = htons(atoi(argv[2]));
+
+    connect(ClientSocketFD, (sockaddr*)&ServerAddress, sizeof(ServerAddress));
+    std::cout << "Connected to server!" << std::endl;
+
+    // Create send/receive threads
+    pthread_t sendThread, recvThread;
+    pthread_create(&recvThread, nullptr, recvfunc, nullptr);
+    pthread_create(&sendThread, nullptr, sendfunc, nullptr);
+
+    pthread_join(recvThread, nullptr);
+    pthread_join(sendThread, nullptr);
+
+    close(ClientSocketFD);
+    pthread_mutex_destroy(&lock);
+
+    return 0;
+}
