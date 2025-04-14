@@ -1,26 +1,57 @@
-# Makefile to compile and run client and server.
-# compile: make
-# run server: make runS
-# run client: make runC ARG="localhost 6000"
-# client arguments are 'localhost' and '6000'
-# clean: make clean
+CXX = g++
+CXXFLAGS = -w -O2 -std=c++17 -lstdc++fs  # Force build, silence all warnings
 
-# Output targets are binary files 'Client' and 'Server'
-Client Server: Client.obj Server.obj
-	g++ Client.obj -o Client
-	g++ Server.obj -o Server
+# ===== Laplace Solver =====
+laplace_server: DistributedLaplaceSolver/DistributedImplementation/server.cpp
+	$(CXX) $(CXXFLAGS) $< -o laplace_server
 
-# Intermediate object files.
-Client.obj: Client.cpp
-	g++ -c Client.cpp -o Client.obj
-Server.obj: Server.cpp
-	g++ -c Server.cpp -o Server.obj
+laplace_client: DistributedLaplaceSolver/DistributedImplementation/client.cpp
+	$(CXX) $(CXXFLAGS) $< -o laplace_client
 
-runS: Server
-	./Server $(ARG)
-runC: Client
-	./Client $(ARG)
+laplace_serial: DistributedLaplaceSolver/SerialImplementation.cpp
+	$(CXX) $(CXXFLAGS) $< -o laplace_serial
 
-# Cleanup temprary files.
+laplace_parallel: DistributedLaplaceSolver/ParallelImplementationOneMachine.cpp
+	$(CXX) $(CXXFLAGS) $< -o laplace_parallel
+
+
+# ===== Matrix Multiplication =====
+matmul_server: DistributedMatMul/DistributedImplementation/server.cpp
+	$(CXX) $(CXXFLAGS) $< -o matmul_server
+
+matmul_client: DistributedMatMul/DistributedImplementation/client.cpp
+	$(CXX) $(CXXFLAGS) $< -o matmul_client
+
+matmul_serial: DistributedMatMul/SerialImplementation.cpp
+	$(CXX) $(CXXFLAGS) $< -o matmul_serial
+
+matmul_parallel: DistributedMatMul/ParallelImplementationOneMachine.cpp
+	$(CXX) $(CXXFLAGS) $< -o matmul_parallel
+
+
+# ===== Array Sum =====
+sum_server: DistributedArraySum/DistributedImplementation/server.cpp
+	$(CXX) $(CXXFLAGS) $< -o sum_server
+
+sum_client: DistributedArraySum/DistributedImplementation/client.cpp
+	$(CXX) $(CXXFLAGS) $< -o sum_client
+
+sum_serial: DistributedArraySum/SerialImplementation.cpp
+	$(CXX) $(CXXFLAGS) $< -o sum_serial
+
+sum_parallel: DistributedArraySum/ParallelImplementationOneMachine.cpp
+	$(CXX) $(CXXFLAGS) $< -o sum_parallel
+
+
+# ===== Batch Targets =====
+all: laplace_server laplace_client laplace_serial laplace_parallel \
+     matmul_server matmul_client matmul_serial matmul_parallel \
+     sum_server sum_client sum_serial sum_parallel
+
+.PHONY: clean force all
+
+force:
+	$(MAKE) -B all
+
 clean:
-	rm -rf *.obj Client Server
+	rm -f laplace_* matmul_* sum_*
