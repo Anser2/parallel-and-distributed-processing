@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/workspaces/parallel-and-distributed-processing/OpenCL_CUDA/matmul-comparison/src/matmul.hpp
+vector
+-
+
+/workspaces/parallel-and-distributed-processing/OpenCL_CUDA/matmul-comparison/src/matmul_single.cpp
+matmul.hpp
+/workspaces/parallel-and-distributed-processing/OpenCL_CUDA/matmul-comparison/src/matmul.hpp
+iostream
+-
+cstdlib
+-
+ctime
+-
+cmath
+-
+

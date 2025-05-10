@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/workspaces/parallel-and-distributed-processing/OpenCL_CUDA/laplace_solver/laplace_cuda.cu
+cuda_runtime.h
+-
+vector
+-
+iostream
+-
+
